@@ -15,6 +15,7 @@ type MovieItem = {
 
 const { id } = Astro.params;
 const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+const markWatched = Astro.url.searchParams.get("markWatched") === "true";
 
 const meResponse = await fetch(`${apiBaseUrl}/users/me`, {
   headers: {
@@ -80,8 +81,8 @@ const item: MovieItem | null = itemResponse?.ok ? ((await itemResponse.json()) a
         <label>
           Status
           <select name="watchStatus" required>
-            <option value="watchlist" selected={item.watchStatus === "watchlist"}>Watchlist</option>
-            <option value="watched" selected={item.watchStatus === "watched"}>Watched</option>
+            <option value="watchlist" selected={markWatched ? false : item.watchStatus === "watchlist"}>Watchlist</option>
+            <option value="watched" selected={markWatched ? true : item.watchStatus === "watched"}>Watched</option>
           </select>
         </label>
         <label>

@@ -67,7 +67,7 @@ const watched = allItems.filter((item) => item.watchStatus === "watched");
           {item.posterPath && <img src={`https://image.tmdb.org/t/p/w185${item.posterPath}`} alt={item.title} loading="lazy" />}
           {item.releaseDate && <p>{item.releaseDate.slice(0, 4)}</p>}
           <p>
-            <a href={`/items/${item.id}`}>View</a> &middot; <a href={`/items/${item.id}/edit`}>Edit</a>
+            <a href={`/items/${item.id}`}>View</a> &middot; <a href={`/items/${item.id}/edit`}>Edit</a> &middot; <a href={`/items/${item.id}/edit?markWatched=true`} class="mark-watched">Mark as Watched</a>
           </p>
         </article>
       ))}

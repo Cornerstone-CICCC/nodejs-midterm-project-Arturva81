@@ -59,8 +59,8 @@ import { apiBaseUrl } from "../lib/config";
   }
 
   .strength-meter {
-    width: 100%;
-    height: 8px;
+    width: 50%;
+    height: 4px;
     background: #2c2c2c;
     border-radius: 999px;
     overflow: hidden;
@@ -124,11 +124,13 @@ import { apiBaseUrl } from "../lib/config";
       const response = await fetch(form.action, {
         method: "POST",
         body,
-        credentials: "include"
+        credentials: "include",
+        redirect: "manual"
       });
 
-      if (response.redirected) {
-        window.location.href = response.url;
+      // Check for redirect (303) which means success
+      if (response.type === 'opaqueredirect' || response.status === 303 || response.status === 0) {
+        window.location.href = "/items";
         return;
       }
 

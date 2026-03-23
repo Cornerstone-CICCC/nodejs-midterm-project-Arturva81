@@ -54,7 +54,6 @@ const item: MovieItem | null = itemResponse?.ok ? ((await itemResponse.json()) a
       <p>Status: {item.watchStatus}</p>
       <p>Rating: {item.rating === null ? "Not rated" : `${item.rating}/5`}</p>
       {item.releaseDate && <p>Release date: {item.releaseDate}</p>}
-      {item.tmdbId && <p>TMDB ID: {item.tmdbId}</p>}
       <p>{item.description || "No notes yet."}</p>
       <p>
         <a href={`/items/${id}/edit`}>Edit movie</a>

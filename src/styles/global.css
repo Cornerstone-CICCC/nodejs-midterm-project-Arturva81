@@ -21,6 +21,7 @@ body {
 	color: var(--text);
 	position: relative;
 	overflow-x: hidden;
+	font-size: 1.2rem;
 }
 
 body::before {
@@ -67,7 +68,7 @@ nav {
 	display: flex;
 	align-items: center;
 	gap: 1.25rem;
-	padding: 1.05rem 1.35rem;
+	padding: 1.5rem 2rem;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
@@ -79,7 +80,7 @@ nav {
 }
 
 .auth-indicator {
-	font-size: 0.9rem;
+	font-size: 1.2rem;
 	color: var(--muted);
 	padding: 0.2rem 0.55rem;
 	border: 1px solid #474747;
@@ -100,7 +101,7 @@ nav {
 }
 
 .nav-logo {
-	filter: invert(1);
+	/* filter removed - using updated logo asset */
 }
 
 a {
@@ -118,5 +119,11 @@ textarea,
 select,
 button {
 	font: inherit;
+}
+
+input,
+textarea,
+select {
+	border-radius: 4px;
 }
 
