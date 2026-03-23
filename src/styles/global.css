@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Poiret+One&display=swap');
+
+:root {
+	color-scheme: dark;
+	--bg: #1f1f1f;
+	--surface: #262626;
+	--text: #ffffff;
+	--muted: #c8c8c8;
+	--glare-soft: rgba(255, 255, 255, 0.05);
+	--glare-bright: rgba(255, 255, 255, 0.12);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	font-family: "Poiret One", sans-serif;
+	background: var(--bg);
+	color: var(--text);
+	position: relative;
+	overflow-x: hidden;
+}
+
+body::before {
+	content: "";
+	position: fixed;
+	inset: -35%;
+	pointer-events: none;
+	z-index: -1;
+	background:
+		linear-gradient(110deg, transparent 25%, var(--glare-soft) 42%, var(--glare-bright) 50%, var(--glare-soft) 58%, transparent 75%),
+		radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.04), transparent 45%);
+	filter: blur(6px);
+	animation: glare-pass 11s linear infinite;
+}
+
+body::after {
+	content: "";
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: -1;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 30%, transparent 70%, rgba(255, 255, 255, 0.02));
+}
+
+@keyframes glare-pass {
+	0% {
+		transform: translateX(-32%) translateY(0) rotate(0.001deg);
+		opacity: 0.28;
+	}
+	50% {
+		opacity: 0.5;
+	}
+	100% {
+		transform: translateX(32%) translateY(0) rotate(0.001deg);
+		opacity: 0.28;
+	}
+}
+
+header {
+	background: var(--surface);
+}
+
+nav {
+	display: flex;
+	align-items: center;
+	gap: 1.25rem;
+	padding: 1.05rem 1.35rem;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+.auth-tools {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.8rem;
+}
+
+.auth-indicator {
+	font-size: 0.9rem;
+	color: var(--muted);
+	padding: 0.2rem 0.55rem;
+	border: 1px solid #474747;
+	border-radius: 999px;
+}
+
+#logoutButton {
+	background: #313131;
+	color: var(--text);
+	border: 1px solid #555;
+	padding: 0.35rem 0.75rem;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+#logoutButton:hover {
+	background: #3a3a3a;
+}
+
+.nav-logo {
+	filter: invert(1);
+}
+
+a {
+	color: var(--text);
+}
+
+main {
+	max-width: 980px;
+	margin: 0 auto;
+	padding: 1.25rem;
+}
+
+input,
+textarea,
+select,
+button {
+	font: inherit;
+}
+

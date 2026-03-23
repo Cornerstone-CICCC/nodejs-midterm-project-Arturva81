@@ -1,0 +1,242 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { apiBaseUrl } from "../../lib/config";
+
+const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+const meResponse = await fetch(`${apiBaseUrl}/users/me`, {
+  headers: {
+    cookie: cookieHeader
+  }
+});
+const isLoggedIn = meResponse.ok;
+---
+
+<BaseLayout title="Add Movie">
+  <h1>Add movie</h1>
+
+  {!isLoggedIn && (
+    <p>
+      Please <a href="/login">log in</a> to add movies.
+    </p>
+  )}
+
+  {isLoggedIn && (
+    <>
+
+  <div class="live-search">
+    <label for="movieSearch">Search for a movie</label>
+    <div class="search-input-wrap">
+      <input
+        type="search"
+        id="movieSearch"
+        autocomplete="off"
+        placeholder="e.g. Interstellar"
+      />
+      <ul id="suggestions" role="listbox" hidden></ul>
+    </div>
+  </div>
+
+  <img id="selectedPoster" class="poster-preview" alt="Selected movie poster" hidden />
+
+  <form method="post" action={`${apiBaseUrl}/items`}>
+    <input type="hidden" name="tmdbId" id="tmdbId" />
+    <input type="hidden" name="posterPath" id="posterPath" />
+    <input type="hidden" name="releaseDate" id="releaseDate" />
+
+    <label>
+      Movie title
+      <input type="text" name="title" id="title" required />
+    </label>
+    <label>
+      Status
+      <select name="watchStatus" id="watchStatus" required>
+        <option value="watchlist" selected>Watchlist</option>
+        <option value="watched">Watched</option>
+      </select>
+    </label>
+
+    <div id="watchedFields" hidden>
+      <label>
+        Review notes
+        <textarea name="description" id="description" rows="6"></textarea>
+      </label>
+      <label>
+        Rating (0 to 5, step 0.5)
+        <input type="number" name="rating" id="rating" min="0" max="5" step="0.5" placeholder="Leave empty if not rated" />
+      </label>
+    </div>
+    <button type="submit">Add movie</button>
+  </form>
+    </>
+  )}
+</BaseLayout>
+
+<style>
+  .live-search {
+    margin-bottom: 1.5rem;
+  }
+  .search-input-wrap {
+    position: relative;
+  }
+  #suggestions {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #2b2b2b;
+    border: 1px solid #414141;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    z-index: 10;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    color: #ffffff;
+  }
+  #suggestions li {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+  }
+  #suggestions li:hover {
+    background: #3a3a3a;
+  }
+  .poster-preview {
+    width: 185px;
+    height: auto;
+    border-radius: 8px;
+    margin: 0 0 1rem;
+  }
+</style>
+
+<script>
+  type TmdbResult = {
+    tmdbId: number;
+    title: string;
+    description: string;
+    releaseDate: string;
+    posterPath: string;
+  };
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? "http://localhost:4000";
+
+  const searchInput = document.getElementById("movieSearch") as HTMLInputElement | null;
+  const suggestionsList = document.getElementById("suggestions") as HTMLUListElement | null;
+  const titleInput = document.getElementById("title") as HTMLInputElement | null;
+  const descriptionInput = document.getElementById("description") as HTMLTextAreaElement | null;
+  const tmdbIdInput = document.getElementById("tmdbId") as HTMLInputElement | null;
+  const posterPathInput = document.getElementById("posterPath") as HTMLInputElement | null;
+  const releaseDateInput = document.getElementById("releaseDate") as HTMLInputElement | null;
+  const selectedPoster = document.getElementById("selectedPoster") as HTMLImageElement | null;
+
+  if (
+    searchInput &&
+    suggestionsList &&
+    titleInput &&
+    descriptionInput &&
+    tmdbIdInput &&
+    posterPathInput &&
+    releaseDateInput &&
+    selectedPoster
+  ) {
+    const searchInputEl = searchInput;
+    const suggestionsListEl = suggestionsList;
+    const titleInputEl = titleInput;
+    const descriptionInputEl = descriptionInput;
+    const tmdbIdInputEl = tmdbIdInput;
+    const posterPathInputEl = posterPathInput;
+    const releaseDateInputEl = releaseDateInput;
+    const selectedPosterEl = selectedPoster;
+
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
+    function hideSuggestions() {
+      suggestionsListEl.hidden = true;
+      suggestionsListEl.innerHTML = "";
+    }
+
+    async function fetchSuggestions(query: string) {
+      if (!query.trim()) {
+        hideSuggestions();
+        selectedPosterEl.hidden = true;
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/items/tmdb/search?q=${encodeURIComponent(query)}`, {
+          credentials: "include"
+        });
+        if (!res.ok) {
+          hideSuggestions();
+          return;
+        }
+        const movies = (await res.json()) as TmdbResult[];
+        renderSuggestions(movies.slice(0, 8));
+      } catch {
+        hideSuggestions();
+      }
+    }
+
+    function renderSuggestions(movies: TmdbResult[]) {
+      suggestionsListEl.innerHTML = "";
+      if (!movies.length) {
+        suggestionsListEl.hidden = true;
+        return;
+      }
+      for (const movie of movies) {
+        const li = document.createElement("li");
+        li.setAttribute("role", "option");
+        li.textContent = movie.title + (movie.releaseDate ? ` (${movie.releaseDate.slice(0, 4)})` : "");
+        li.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          titleInputEl.value = movie.title;
+          descriptionInputEl.value = "";
+          tmdbIdInputEl.value = String(movie.tmdbId);
+          posterPathInputEl.value = movie.posterPath;
+          releaseDateInputEl.value = movie.releaseDate;
+          searchInputEl.value = movie.title;
+          if (movie.posterPath) {
+            selectedPosterEl.src = `https://image.tmdb.org/t/p/w342${movie.posterPath}`;
+            selectedPosterEl.hidden = false;
+          } else {
+            selectedPosterEl.hidden = true;
+          }
+          hideSuggestions();
+        });
+        suggestionsListEl.appendChild(li);
+      }
+      suggestionsListEl.hidden = false;
+    }
+
+    searchInputEl.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => fetchSuggestions(searchInputEl.value), 300);
+    });
+
+    searchInputEl.addEventListener("blur", () => {
+      setTimeout(hideSuggestions, 150);
+    });
+
+    // Show/hide watched-only fields
+    const watchStatusSelect = document.getElementById("watchStatus") as HTMLSelectElement | null;
+    const watchedFields = document.getElementById("watchedFields") as HTMLDivElement | null;
+    const ratingInput = document.getElementById("rating") as HTMLInputElement | null;
+
+    function toggleWatchedFields() {
+      if (!watchStatusSelect || !watchedFields || !ratingInput) {
+        return;
+      }
+
+      const isWatched = watchStatusSelect.value === "watched";
+      watchedFields.hidden = !isWatched;
+      if (!isWatched) {
+        descriptionInputEl.value = "";
+        ratingInput.value = "";
+      }
+    }
+
+    watchStatusSelect?.addEventListener("change", toggleWatchedFields);
+    toggleWatchedFields();
+  }
+</script>

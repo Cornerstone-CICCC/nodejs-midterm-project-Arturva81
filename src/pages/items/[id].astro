@@ -1,0 +1,71 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { apiBaseUrl } from "../../lib/config";
+
+type MovieItem = {
+  id: string;
+  title: string;
+  description: string;
+  watchStatus: "watchlist" | "watched";
+  rating: number | null;
+  posterPath?: string;
+  releaseDate?: string;
+  tmdbId?: number;
+};
+
+const { id } = Astro.params;
+const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+
+const meResponse = await fetch(`${apiBaseUrl}/users/me`, {
+  headers: {
+    cookie: cookieHeader
+  }
+});
+const isLoggedIn = meResponse.ok;
+
+const itemResponse = isLoggedIn
+  ? await fetch(`${apiBaseUrl}/items/${id}`, {
+      headers: {
+        cookie: cookieHeader
+      }
+    })
+  : null;
+const item: MovieItem | null = itemResponse?.ok ? ((await itemResponse.json()) as MovieItem) : null;
+---
+
+<BaseLayout title="Movie details">
+  {!isLoggedIn && (
+    <>
+      <h1>Login required</h1>
+      <p>
+        Please <a href="/login">log in</a> to view movie details.
+      </p>
+    </>
+  )}
+
+  {isLoggedIn && (
+    <>
+  {!item && <h1>Movie not found</h1>}
+
+  {!!item && (
+    <>
+      <h1>{item.title}</h1>
+      {item.posterPath && <img src={`https://image.tmdb.org/t/p/w342${item.posterPath}`} alt={item.title} loading="lazy" />}
+      <p>Status: {item.watchStatus}</p>
+      <p>Rating: {item.rating === null ? "Not rated" : `${item.rating}/5`}</p>
+      {item.releaseDate && <p>Release date: {item.releaseDate}</p>}
+      {item.tmdbId && <p>TMDB ID: {item.tmdbId}</p>}
+      <p>{item.description || "No notes yet."}</p>
+      <p>
+        <a href={`/items/${id}/edit`}>Edit movie</a>
+      </p>
+      <form method="post" action={`${apiBaseUrl}/items/${id}/delete`}>
+        <button type="submit">Delete movie</button>
+      </form>
+    </>
+  )}
+
+  <p><a href="/items">Back to movies</a></p>
+    </>
+  )}
+</BaseLayout>
