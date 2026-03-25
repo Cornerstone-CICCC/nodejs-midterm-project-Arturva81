@@ -1,0 +1,157 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { apiBaseUrl } from "../../lib/config";
+
+type MovieItem = {
+  id: string;
+  title: string;
+  description: string;
+  watchStatus: "watchlist" | "watched";
+  rating: number | null;
+  posterPath?: string;
+  releaseDate?: string;
+};
+
+const q = (Astro.url.searchParams.get("q") ?? "").trim();
+const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+
+const meResponse = await fetch(`${apiBaseUrl}/users/me`, {
+  headers: {
+    cookie: cookieHeader
+  }
+});
+
+const isLoggedIn = meResponse.ok;
+
+const params = new URLSearchParams();
+if (q) params.set("q", q);
+
+const itemsResponse = isLoggedIn
+  ? await fetch(`${apiBaseUrl}/items?${params.toString()}`, {
+      headers: {
+        cookie: cookieHeader
+      }
+    })
+  : null;
+const allItems: MovieItem[] = itemsResponse?.ok ? ((await itemsResponse.json()) as MovieItem[]) : [];
+
+const watchlist = allItems.filter((item) => item.watchStatus === "watchlist");
+const watched = allItems.filter((item) => item.watchStatus === "watched");
+---
+
+<BaseLayout title="Movies">
+  <h1>Browse movies</h1>
+  {!isLoggedIn && (
+    <p>
+      Please <a href="/login">log in</a> to view your movies.
+    </p>
+  )}
+
+  {isLoggedIn && (
+    <>
+  <form method="get" action="/items">
+    <input type="search" name="q" value={q} placeholder="Search movies" />
+    <button type="submit">Search</button>
+  </form>
+
+  {!allItems.length && <p>No movies found.</p>}
+
+  {!!watchlist.length && (
+    <section>
+      <h2>Watchlist</h2>
+      {watchlist.map((item) => (
+        <article>
+          <h3>
+            <a href={`/items/${item.id}`}>{item.title}</a>
+          </h3>
+          {item.posterPath && <img src={`https://image.tmdb.org/t/p/w185${item.posterPath}`} alt={item.title} loading="lazy" />}
+          {item.releaseDate && <p>{item.releaseDate.slice(0, 4)}</p>}
+          <a href={`/items/${item.id}`} class="view-btn">View</a>
+          <a href={`/items/${item.id}/edit?markWatched=true`} class="mark-watched-btn">Mark as Watched</a>
+          <form method="post" action={`${apiBaseUrl}/items/${item.id}/delete`} class="delete-form">
+            <button type="submit" class="delete-btn">Remove</button>
+          </form>
+        </article>
+      ))}
+    </section>
+  )}
+
+  {!!watched.length && (
+    <section>
+      <h2>Watched</h2>
+      {watched.map((item) => (
+        <article>
+          <h3>
+            <a href={`/items/${item.id}`}>{item.title}</a>
+          </h3>
+          {item.posterPath && <img src={`https://image.tmdb.org/t/p/w185${item.posterPath}`} alt={item.title} loading="lazy" />}
+          {item.releaseDate && <p>{item.releaseDate.slice(0, 4)}</p>}
+          <p>Rating: {item.rating === null ? "Not rated" : `${item.rating} / 5`}</p>
+          {item.description && <p>{item.description}</p>}
+          <a href={`/items/${item.id}`} class="view-btn">View</a>
+          <form method="post" action={`${apiBaseUrl}/items/${item.id}/delete`} class="delete-form">
+            <button type="submit" class="delete-btn">Remove</button>
+          </form>
+        </article>
+      ))}
+    </section>
+  )}
+    </>
+  )}
+</BaseLayout>
+
+<style>
+  .delete-form {
+    margin-top: 0.4rem;
+  }
+  .delete-btn {
+    background: #5a1a1a;
+    color: #fff;
+    border: 1px solid #7a2a2a;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+  }
+  .delete-btn:hover {
+    background: #7a2222;
+  }
+  .mark-watched-btn {
+    display: inline-block;
+    margin-top: 0.4rem;
+    background: #1a3a5a;
+    color: #fff;
+    border: 1px solid #2a5a8a;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font: inherit;
+  }
+  .mark-watched-btn:hover {
+    background: #235080;
+  }
+  .view-btn {
+    display: inline-block;
+    margin-top: 0.4rem;
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font: inherit;
+  }
+  .view-btn:hover {
+    background: #3a3a3a;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>(".delete-form").forEach((form) => {
+    form.addEventListener("submit", (e) => {
+      if (!confirm("Remove this movie from your list?")) {
+        e.preventDefault();
+      }
+    });
+  });
+</script>

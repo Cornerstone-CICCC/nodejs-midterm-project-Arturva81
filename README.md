@@ -56,3 +56,16 @@ Individual presentation will be on next Monday. During the presentation of your 
 10. Log out
 
 Good luck! 🎉🎉🎉
+
+## TMDB integration setup
+
+To use TMDB movie search in this project, set an API key before running the server:
+
+1. Create a TMDB API key from The Movie Database account settings.
+2. Add an environment variable named TMDB_API_KEY.
+3. Start the app with npm run dev.
+
+Example .env values:
+
+TMDB_API_KEY=your_tmdb_api_key_here
+SESSION_SECRET=your_session_secret_here

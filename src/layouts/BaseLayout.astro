@@ -1,0 +1,92 @@
+---
+interface Props {
+  title?: string;
+}
+
+const { title = "Astro Midterm Project" } = Astro.props;
+import logo from "../assets/reelfeel.png";
+import "../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/" aria-label="reelfeel home" style="display: inline-flex; align-items: center;">
+          <img class="nav-logo" src={logo.src} alt="reelfeel" width="168" height="56" style="display: block; height: 3rem; width: auto;" />
+        </a>
+        <a href="/items">Browse Movies</a>
+        <a href="/items/new">Add Movie</a>
+        <div class="auth-tools">
+          <span id="authIndicator" class="auth-indicator" aria-live="polite">Checking status...</span>
+          <a id="loginLink" href="/login">Login</a>
+          <a id="registerLink" href="/register">Register</a>
+          <button id="logoutButton" type="button" hidden>Log out</button>
+        </div>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+
+    <script>
+      const apiBaseUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:4000";
+
+      const authIndicator = document.getElementById("authIndicator") as HTMLSpanElement | null;
+      const loginLink = document.getElementById("loginLink") as HTMLAnchorElement | null;
+      const registerLink = document.getElementById("registerLink") as HTMLAnchorElement | null;
+      const logoutButton = document.getElementById("logoutButton") as HTMLButtonElement | null;
+
+      const setLoggedOut = () => {
+        if (!authIndicator || !loginLink || !registerLink || !logoutButton) return;
+        authIndicator.textContent = "Not logged in";
+        loginLink.hidden = false;
+        registerLink.hidden = false;
+        logoutButton.hidden = true;
+      };
+
+      const setLoggedIn = () => {
+        if (!authIndicator || !loginLink || !registerLink || !logoutButton) return;
+        authIndicator.textContent = "Logged in";
+        loginLink.hidden = true;
+        registerLink.hidden = true;
+        logoutButton.hidden = false;
+      };
+
+      const checkAuth = async () => {
+        try {
+          const response = await fetch(`${apiBaseUrl}/users/me`, {
+            method: "GET",
+            credentials: "include"
+          });
+          if (response.ok) {
+            setLoggedIn();
+          } else {
+            setLoggedOut();
+          }
+        } catch {
+          setLoggedOut();
+        }
+      };
+
+      logoutButton?.addEventListener("click", async () => {
+        try {
+          await fetch(`${apiBaseUrl}/users/logout`, {
+            method: "POST",
+            credentials: "include"
+          });
+        } finally {
+          window.location.href = "/";
+        }
+      });
+
+      checkAuth();
+    </script>
+  </body>
+</html>

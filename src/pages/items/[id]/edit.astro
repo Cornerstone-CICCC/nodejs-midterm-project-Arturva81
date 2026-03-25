@@ -1,0 +1,258 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { apiBaseUrl } from "../../../lib/config";
+
+type MovieItem = {
+  id: string;
+  title: string;
+  description: string;
+  watchStatus: "watchlist" | "watched";
+  rating: number | null;
+  tmdbId?: number;
+  posterPath?: string;
+  releaseDate?: string;
+};
+
+const { id } = Astro.params;
+const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+const markWatched = Astro.url.searchParams.get("markWatched") === "true";
+
+const meResponse = await fetch(`${apiBaseUrl}/users/me`, {
+  headers: {
+    cookie: cookieHeader
+  }
+});
+const isLoggedIn = meResponse.ok;
+
+const itemResponse = isLoggedIn
+  ? await fetch(`${apiBaseUrl}/items/${id}`, {
+      headers: {
+        cookie: cookieHeader
+      }
+    })
+  : null;
+const item: MovieItem | null = itemResponse?.ok ? ((await itemResponse.json()) as MovieItem) : null;
+---
+
+<BaseLayout title="Edit movie">
+  {!isLoggedIn && (
+    <>
+      <h1>Login required</h1>
+      <p>
+        Please <a href="/login">log in</a> to edit movies.
+      </p>
+    </>
+  )}
+
+  {isLoggedIn && (
+    <>
+  {!item && <h1>Movie not found</h1>}
+
+  {!!item && (
+    <>
+      <h1>{markWatched ? `Mark as watched: ${item.title}` : `Edit: ${item.title}`}</h1>
+
+      {markWatched && <p>Add your review and rating, then save the movie as watched.</p>}
+
+      {!markWatched && (
+      <div class="live-search">
+        <label for="movieSearch">Find a different movie</label>
+        <div class="search-input-wrap">
+          <input
+            type="search"
+            id="movieSearch"
+            autocomplete="off"
+            placeholder="Search to change movie info…"
+          />
+          <ul id="suggestions" role="listbox" hidden></ul>
+        </div>
+      </div>
+      )}
+
+      <form method="post" action={`${apiBaseUrl}/items/${id}`} class="movie-form">
+        <input type="hidden" name="tmdbId" id="tmdbId" value={item.tmdbId ?? ""} />
+        <input type="hidden" name="posterPath" id="posterPath" value={item.posterPath ?? ""} />
+        <input type="hidden" name="releaseDate" id="releaseDate" value={item.releaseDate ?? ""} />
+
+        {markWatched ? (
+          <input type="hidden" name="title" id="title" value={item.title} />
+        ) : (
+        <label class="field-block">
+          Movie title
+          <input type="text" name="title" id="title" value={item.title} required />
+        </label>
+        )}
+        <label class="field-block">
+          Review notes
+          <textarea name="description" id="description" rows="6">{item.description}</textarea>
+        </label>
+        {markWatched ? (
+          <input type="hidden" name="watchStatus" value="watched" />
+        ) : (
+        <label class="field-block">
+          Status
+          <select name="watchStatus" required>
+            <option value="watchlist" selected={markWatched ? false : item.watchStatus === "watchlist"}>Watchlist</option>
+            <option value="watched" selected={markWatched ? true : item.watchStatus === "watched"}>Watched</option>
+          </select>
+        </label>
+        )}
+        <label class="field-block rating-field">
+          <span>Rating</span>
+          <input type="number" name="rating" min="0" max="5" step="0.5" value={item.rating ?? ""} />
+        </label>
+        <button type="submit" class="submit-btn">{markWatched ? "Save review" : "Save movie"}</button>
+      </form>
+    </>
+  )}
+    </>
+  )}
+</BaseLayout>
+
+<style>
+  .movie-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    max-width: 520px;
+  }
+  .field-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .field-block textarea,
+  .field-block input,
+  .field-block select {
+    width: 100%;
+    max-width: 100%;
+    background: #2b2b2b;
+    color: #fff;
+    border: 1px solid #414141;
+    padding: 0.5rem;
+    border-radius: 4px;
+  }
+  .field-block textarea {
+    min-height: 170px;
+    resize: vertical;
+  }
+  .rating-field {
+    max-width: 180px;
+  }
+  .submit-btn {
+    align-self: flex-start;
+    margin-top: 0.2rem;
+  }
+  .live-search {
+    margin-bottom: 1.5rem;
+  }
+  .search-input-wrap {
+    position: relative;
+  }
+  #suggestions {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #2b2b2b;
+    border: 1px solid #414141;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    z-index: 10;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    color: #ffffff;
+  }
+  #suggestions li {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+  }
+  #suggestions li:hover {
+    background: #3a3a3a;
+  }
+</style>
+
+<script>
+  type TmdbResult = {
+    tmdbId: number;
+    title: string;
+    description: string;
+    releaseDate: string;
+    posterPath: string;
+  };
+
+  const API_BASE = import.meta.env.PUBLIC_API_URL ?? "http://localhost:4000";
+
+  const searchInput = document.getElementById("movieSearch") as HTMLInputElement | null;
+
+  if (searchInput) {
+    const suggestionsList = document.getElementById("suggestions") as HTMLUListElement;
+    const titleInput = document.getElementById("title") as HTMLInputElement;
+    const descriptionInput = document.getElementById("description") as HTMLTextAreaElement;
+    const tmdbIdInput = document.getElementById("tmdbId") as HTMLInputElement;
+    const posterPathInput = document.getElementById("posterPath") as HTMLInputElement;
+    const releaseDateInput = document.getElementById("releaseDate") as HTMLInputElement;
+
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
+    function hideSuggestions() {
+      suggestionsList.hidden = true;
+      suggestionsList.innerHTML = "";
+    }
+
+    async function fetchSuggestions(query: string) {
+      if (!query.trim()) {
+        hideSuggestions();
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/items/tmdb/search?q=${encodeURIComponent(query)}`, {
+          credentials: "include"
+        });
+        if (!res.ok) { hideSuggestions(); return; }
+        const movies = (await res.json()) as TmdbResult[];
+        renderSuggestions(movies.slice(0, 8));
+      } catch {
+        hideSuggestions();
+      }
+    }
+
+    function renderSuggestions(movies: TmdbResult[]) {
+      suggestionsList.innerHTML = "";
+      if (!movies.length) {
+        suggestionsList.hidden = true;
+        return;
+      }
+      for (const movie of movies) {
+        const li = document.createElement("li");
+        li.setAttribute("role", "option");
+        li.textContent = movie.title + (movie.releaseDate ? ` (${movie.releaseDate.slice(0, 4)})` : "");
+        li.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          titleInput.value = movie.title;
+          descriptionInput.value = movie.description;
+          tmdbIdInput.value = String(movie.tmdbId);
+          posterPathInput.value = movie.posterPath;
+          releaseDateInput.value = movie.releaseDate;
+          if (searchInput) searchInput.value = movie.title;
+          hideSuggestions();
+        });
+        suggestionsList.appendChild(li);
+      }
+      suggestionsList.hidden = false;
+    }
+
+    searchInput.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => fetchSuggestions(searchInput.value), 300);
+    });
+
+    searchInput.addEventListener("blur", () => {
+      setTimeout(hideSuggestions, 150);
+    });
+  }
+</script>

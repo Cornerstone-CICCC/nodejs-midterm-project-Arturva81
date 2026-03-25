@@ -1,0 +1,150 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { apiBaseUrl } from "../lib/config";
+---
+
+<BaseLayout title="Register">
+  <h1>Create an account</h1>
+  <p id="registerError" class="error" hidden></p>
+
+  <form id="registerForm" method="post" action={`${apiBaseUrl}/users/register`}>
+    <label>
+      Display name
+      <input type="text" name="name" required />
+    </label>
+    <label>
+      Email
+      <input type="email" name="email" required />
+    </label>
+    <label>
+      Password
+      <input id="password" type="password" name="password" required />
+    </label>
+    <p id="passwordStrength" class="strength">Strength: too weak</p>
+    <div class="strength-meter" aria-hidden="true">
+      <div id="strengthFill" class="strength-fill"></div>
+    </div>
+    <button type="submit">Register</button>
+  </form>
+</BaseLayout>
+
+<style>
+  .error {
+    background: #4b1f1f;
+    border: 1px solid #7d2e2e;
+    color: #ffd6d6;
+    padding: 0.65rem 0.8rem;
+    border-radius: 6px;
+  }
+
+  .strength {
+    margin-top: 0.25rem;
+    color: #c8c8c8;
+  }
+
+  .strength[data-level="weak"] {
+    color: #ff8a8a;
+  }
+
+  .strength[data-level="fair"] {
+    color: #ffcf70;
+  }
+
+  .strength[data-level="good"] {
+    color: #9fd898;
+  }
+
+  .strength[data-level="strong"] {
+    color: #6fe2b0;
+  }
+
+  .strength-meter {
+    width: 50%;
+    height: 4px;
+    background: #2c2c2c;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 0.3rem 0 0.9rem;
+  }
+
+  .strength-fill {
+    height: 100%;
+    width: 10%;
+    background: #ff8a8a;
+    transition: width 140ms ease, background-color 140ms ease;
+  }
+</style>
+
+<script>
+  const form = document.getElementById("registerForm") as HTMLFormElement | null;
+  const errorBox = document.getElementById("registerError") as HTMLParagraphElement | null;
+  const passwordInput = document.getElementById("password") as HTMLInputElement | null;
+  const strengthText = document.getElementById("passwordStrength") as HTMLParagraphElement | null;
+  const strengthFill = document.getElementById("strengthFill") as HTMLDivElement | null;
+
+  const getStrength = (password: string) => {
+    let score = 0;
+    if (password.length >= 8) score += 1;
+    if (password.length >= 12) score += 1;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
+    if (/\d/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+    if (score <= 1) return { label: "too weak", level: "weak", width: "20%", color: "#ff8a8a" };
+    if (score === 2) return { label: "fair", level: "fair", width: "45%", color: "#ffcf70" };
+    if (score === 3 || score === 4) return { label: "good", level: "good", width: "72%", color: "#9fd898" };
+    return { label: "strong", level: "strong", width: "100%", color: "#6fe2b0" };
+  };
+
+  const updateStrength = () => {
+    if (!passwordInput || !strengthText || !strengthFill) return;
+    const { label, level, width, color } = getStrength(passwordInput.value);
+    strengthText.textContent = `Strength: ${label}`;
+    strengthText.dataset.level = level;
+    strengthFill.style.width = width;
+    strengthFill.style.backgroundColor = color;
+  };
+
+  passwordInput?.addEventListener("input", updateStrength);
+  updateStrength();
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form || !errorBox) return;
+
+    errorBox.hidden = true;
+
+    const formData = new FormData(form);
+    const body = new URLSearchParams();
+    formData.forEach((value, key) => {
+      body.set(key, String(value));
+    });
+
+    try {
+      const response = await fetch(form.action, {
+        method: "POST",
+        body,
+        credentials: "include",
+        redirect: "manual"
+      });
+
+      // Check for redirect (303) which means success
+      if (response.type === 'opaqueredirect' || response.status === 303 || response.status === 0) {
+        window.location.href = "/items";
+        return;
+      }
+
+      if (response.ok) {
+        window.location.href = "/items";
+        return;
+      }
+
+      const payload = (await response.json()) as { error?: string };
+      errorBox.textContent = payload.error ?? "Registration failed.";
+      errorBox.hidden = false;
+    } catch {
+      errorBox.textContent = "Unable to connect to the server.";
+      errorBox.hidden = false;
+    }
+  });
+</script>
