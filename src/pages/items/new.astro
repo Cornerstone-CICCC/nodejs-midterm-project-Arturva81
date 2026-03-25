@@ -36,17 +36,21 @@ const isLoggedIn = meResponse.ok;
     </div>
   </div>
 
-  <img id="selectedPoster" class="poster-preview" alt="Selected movie poster" hidden />
+  <div class="movie-preview-wrap" id="moviePreviewWrap" hidden>
+    <img id="selectedPoster" class="poster-preview" alt="" />
+    <div class="movie-meta" id="movieMeta">
+      <p class="movie-meta-title" id="movieMetaTitle"></p>
+      <p class="movie-meta-overview" id="movieMetaOverview"></p>
+      <p class="movie-meta-director" id="movieMetaDirector"></p>
+    </div>
+  </div>
 
   <form method="post" action={`${apiBaseUrl}/items`}>
     <input type="hidden" name="tmdbId" id="tmdbId" />
     <input type="hidden" name="posterPath" id="posterPath" />
     <input type="hidden" name="releaseDate" id="releaseDate" />
 
-    <label>
-      Movie title
-      <input type="text" name="title" id="title" required />
-    </label>
+    <input type="hidden" name="title" id="title" />
     <label>
       Status
       <select name="watchStatus" id="watchStatus" required>
@@ -56,16 +60,16 @@ const isLoggedIn = meResponse.ok;
     </label>
 
     <div id="watchedFields" hidden>
-      <label>
+      <label class="field-block">
         Review notes
-        <textarea name="description" id="description" rows="6"></textarea>
+        <textarea name="description" id="description" rows="5"></textarea>
       </label>
       <label>
-        Rating (0 to 5, step 0.5)
+        Rating
         <input type="number" name="rating" id="rating" min="0" max="5" step="0.5" placeholder="Leave empty if not rated" />
       </label>
     </div>
-    <button type="submit">Add movie</button>
+    <button class="submit-btn" type="submit">Add movie</button>
   </form>
     </>
   )}
@@ -105,9 +109,57 @@ const isLoggedIn = meResponse.ok;
   }
   .poster-preview {
     width: 185px;
+    flex-shrink: 0;
     height: auto;
     border-radius: 8px;
-    margin: 0 0 1rem;
+  }
+  .movie-preview-wrap {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    margin: 0 0 1.25rem;
+  }
+  .movie-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.25rem;
+  }
+  .movie-meta p {
+    margin: 0;
+  }
+  .movie-meta-title {
+    font-size: 1.15rem;
+    font-weight: bold;
+  }
+  .movie-meta-overview {
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    max-width: 420px;
+  }
+  .movie-meta-director {
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .submit-btn {
+    margin-top: 1rem;
+  }
+  .field-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+  }
+  .field-block textarea {
+    width: 100%;
+    max-width: 480px;
+    background: #2b2b2b;
+    color: #fff;
+    border: 1px solid #414141;
+    padding: 0.5rem;
+    border-radius: 4px;
+    resize: vertical;
   }
 </style>
 
@@ -130,6 +182,10 @@ const isLoggedIn = meResponse.ok;
   const posterPathInput = document.getElementById("posterPath") as HTMLInputElement | null;
   const releaseDateInput = document.getElementById("releaseDate") as HTMLInputElement | null;
   const selectedPoster = document.getElementById("selectedPoster") as HTMLImageElement | null;
+  const moviePreviewWrap = document.getElementById("moviePreviewWrap") as HTMLDivElement | null;
+  const movieMetaTitle = document.getElementById("movieMetaTitle") as HTMLParagraphElement | null;
+  const movieMetaOverview = document.getElementById("movieMetaOverview") as HTMLParagraphElement | null;
+  const movieMetaDirector = document.getElementById("movieMetaDirector") as HTMLParagraphElement | null;
 
   if (
     searchInput &&
@@ -139,7 +195,11 @@ const isLoggedIn = meResponse.ok;
     tmdbIdInput &&
     posterPathInput &&
     releaseDateInput &&
-    selectedPoster
+    selectedPoster &&
+    moviePreviewWrap &&
+    movieMetaTitle &&
+    movieMetaOverview &&
+    movieMetaDirector
   ) {
     const searchInputEl = searchInput;
     const suggestionsListEl = suggestionsList;
@@ -149,6 +209,10 @@ const isLoggedIn = meResponse.ok;
     const posterPathInputEl = posterPathInput;
     const releaseDateInputEl = releaseDateInput;
     const selectedPosterEl = selectedPoster;
+    const moviePreviewWrapEl = moviePreviewWrap;
+    const movieMetaTitleEl = movieMetaTitle;
+    const movieMetaOverviewEl = movieMetaOverview;
+    const movieMetaDirectorEl = movieMetaDirector;
 
     let debounceTimer: ReturnType<typeof setTimeout>;
 
@@ -160,7 +224,7 @@ const isLoggedIn = meResponse.ok;
     async function fetchSuggestions(query: string) {
       if (!query.trim()) {
         hideSuggestions();
-        selectedPosterEl.hidden = true;
+        moviePreviewWrapEl.hidden = true;
         return;
       }
       try {
@@ -196,12 +260,26 @@ const isLoggedIn = meResponse.ok;
           posterPathInputEl.value = movie.posterPath;
           releaseDateInputEl.value = movie.releaseDate;
           searchInputEl.value = movie.title;
+
+          // Populate meta info immediately
+          const year = movie.releaseDate ? ` (${movie.releaseDate.slice(0, 4)})` : "";
+          movieMetaTitleEl.textContent = movie.title + year;
+          movieMetaOverviewEl.textContent = movie.description;
+          movieMetaDirectorEl.textContent = "Director: ...";
+
           if (movie.posterPath) {
             selectedPosterEl.src = `https://image.tmdb.org/t/p/w342${movie.posterPath}`;
-            selectedPosterEl.hidden = false;
-          } else {
-            selectedPosterEl.hidden = true;
           }
+          moviePreviewWrapEl.hidden = false;
+
+          // Fetch director
+          fetch(`${API_BASE}/items/tmdb/${movie.tmdbId}`, { credentials: "include" })
+            .then((r) => r.ok ? r.json() : null)
+            .then((data: { director?: string } | null) => {
+              movieMetaDirectorEl.textContent = data?.director ? `Director: ${data.director}` : "";
+            })
+            .catch(() => { movieMetaDirectorEl.textContent = ""; });
+
           hideSuggestions();
         });
         suggestionsListEl.appendChild(li);
@@ -212,6 +290,10 @@ const isLoggedIn = meResponse.ok;
     searchInputEl.addEventListener("input", () => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => fetchSuggestions(searchInputEl.value), 300);
+    });
+
+    searchInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") e.preventDefault();
     });
 
     searchInputEl.addEventListener("blur", () => {

@@ -17,54 +17,164 @@ const { id } = Astro.params;
 const cookieHeader = Astro.request.headers.get("cookie") ?? "";
 
 const meResponse = await fetch(`${apiBaseUrl}/users/me`, {
-  headers: {
-    cookie: cookieHeader
-  }
+  headers: { cookie: cookieHeader }
 });
 const isLoggedIn = meResponse.ok;
 
 const itemResponse = isLoggedIn
   ? await fetch(`${apiBaseUrl}/items/${id}`, {
-      headers: {
-        cookie: cookieHeader
-      }
+      headers: { cookie: cookieHeader }
     })
   : null;
 const item: MovieItem | null = itemResponse?.ok ? ((await itemResponse.json()) as MovieItem) : null;
+
+let director = "";
+let synopsis = "";
+if (item?.tmdbId) {
+  try {
+    const detailsRes = await fetch(`${apiBaseUrl}/items/tmdb/${item.tmdbId}`, {
+      headers: { cookie: cookieHeader }
+    });
+    if (detailsRes.ok) {
+      const data = (await detailsRes.json()) as { director?: string; overview?: string };
+      director = data.director ?? "";
+      synopsis = data.overview ?? "";
+    }
+  } catch { /* ignore */ }
+}
+
+const year = item?.releaseDate ? item.releaseDate.slice(0, 4) : "";
 ---
 
-<BaseLayout title="Movie details">
+<BaseLayout title={item?.title ?? "Movie details"}>
   {!isLoggedIn && (
     <>
       <h1>Login required</h1>
-      <p>
-        Please <a href="/login">log in</a> to view movie details.
-      </p>
+      <p>Please <a href="/login">log in</a> to view movie details.</p>
     </>
   )}
 
-  {isLoggedIn && (
-    <>
-  {!item && <h1>Movie not found</h1>}
+  {isLoggedIn && !item && <h1>Movie not found</h1>}
 
-  {!!item && (
+  {isLoggedIn && !!item && (
     <>
-      <h1>{item.title}</h1>
-      {item.posterPath && <img src={`https://image.tmdb.org/t/p/w342${item.posterPath}`} alt={item.title} loading="lazy" />}
-      <p>Status: {item.watchStatus}</p>
-      <p>Rating: {item.rating === null ? "Not rated" : `${item.rating}/5`}</p>
-      {item.releaseDate && <p>Release date: {item.releaseDate}</p>}
-      <p>{item.description || "No notes yet."}</p>
-      <p>
-        <a href={`/items/${id}/edit`}>Edit movie</a>
-      </p>
-      <form method="post" action={`${apiBaseUrl}/items/${id}/delete`}>
-        <button type="submit">Delete movie</button>
-      </form>
-    </>
-  )}
+      <h1>{item.title}{year ? ` (${year})` : ""}</h1>
 
-  <p><a href="/items">Back to movies</a></p>
+      <div class="movie-detail-wrap">
+        {item.posterPath && (
+          <img
+            src={`https://image.tmdb.org/t/p/w342${item.posterPath}`}
+            alt={item.title}
+            class="detail-poster"
+            loading="lazy"
+          />
+        )}
+        <div class="detail-meta">
+          {synopsis && <p class="detail-overview">{synopsis}</p>}
+          {director && <p class="detail-director">Director: {director}</p>}
+          <p class="detail-status">
+            Status: <strong>{item.watchStatus === "watched" ? "Watched" : "Watchlist"}</strong>
+          </p>
+          {item.watchStatus === "watched" && (
+            <p class="detail-rating">
+              Rating: {item.rating === null ? "Not rated" : `${item.rating} / 5`}
+            </p>
+          )}
+            {item.description && <p class="detail-review"><strong>Review:</strong> {item.description}</p>}
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        <a href={`/items/${id}/edit`} class="action-btn">Edit</a>
+        <a href="/items" class="action-btn">Back to movies</a>
+        <form method="post" action={`${apiBaseUrl}/items/${id}/delete`} class="delete-form">
+          <button type="submit" class="delete-btn">Remove</button>
+        </form>
+      </div>
     </>
   )}
 </BaseLayout>
+
+<style>
+  .movie-detail-wrap {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    margin: 1.25rem 0;
+  }
+  .detail-poster {
+    width: 220px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    height: auto;
+  }
+  .detail-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding-top: 0.25rem;
+  }
+  .detail-meta p {
+    margin: 0;
+  }
+  .detail-overview {
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    max-width: 480px;
+  }
+  .detail-director {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+    .detail-review {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+  .detail-status,
+  .detail-rating {
+    font-size: 1rem;
+  }
+  .detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+  }
+  .action-btn {
+    display: inline-block;
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font: inherit;
+  }
+  .action-btn:hover {
+    background: #3a3a3a;
+  }
+  .delete-form {
+    margin: 0;
+  }
+  .delete-btn {
+    background: #5a1a1a;
+    color: #fff;
+    border: 1px solid #7a2a2a;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+  }
+  .delete-btn:hover {
+    background: #7a2222;
+  }
+</style>
+
+<script>
+  document.querySelector<HTMLFormElement>(".delete-form")?.addEventListener("submit", (e) => {
+    if (!confirm("Remove this movie from your list?")) e.preventDefault();
+  });
+</script>

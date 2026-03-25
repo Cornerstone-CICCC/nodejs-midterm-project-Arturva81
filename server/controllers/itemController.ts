@@ -110,6 +110,35 @@ export const searchTmdbMovies = async (req: RequestWithSession, res: Response) =
   res.json(results);
 };
 
+export const getTmdbMovieDetails = async (req: RequestWithSession, res: Response) => {
+  const { tmdbId } = req.params;
+    const tmdbMovieId = Array.isArray(tmdbId) ? tmdbId[0] : tmdbId;
+  const tmdbApiKey = process.env.TMDB_API_KEY;
+
+  if (!tmdbApiKey) {
+    res.status(500).json({ error: "TMDB API key is not configured." });
+    return;
+  }
+
+  const response = await fetch(
+      `https://api.themoviedb.org/3/movie/${encodeURIComponent(tmdbMovieId)}?api_key=${encodeURIComponent(tmdbApiKey)}&append_to_response=credits`
+  );
+
+  if (!response.ok) {
+    res.status(502).json({ error: "Failed to fetch data from TMDB." });
+    return;
+  }
+
+  const data = (await response.json()) as {
+    overview?: string;
+    credits?: { crew?: Array<{ job: string; name: string }> };
+  };
+
+  const director = data.credits?.crew?.find((c) => c.job === "Director")?.name ?? "";
+  const overview = data.overview ?? "";
+  res.json({ director, overview });
+};
+
 export const getItem = (req: RequestWithSession, res: Response) => {
   if (!req.session?.user) {
     res.status(401).json({ error: "Authentication required." });

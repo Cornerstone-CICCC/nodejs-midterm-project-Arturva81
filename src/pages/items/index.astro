@@ -66,9 +66,11 @@ const watched = allItems.filter((item) => item.watchStatus === "watched");
           </h3>
           {item.posterPath && <img src={`https://image.tmdb.org/t/p/w185${item.posterPath}`} alt={item.title} loading="lazy" />}
           {item.releaseDate && <p>{item.releaseDate.slice(0, 4)}</p>}
-          <p>
-            <a href={`/items/${item.id}`}>View</a> &middot; <a href={`/items/${item.id}/edit`}>Edit</a> &middot; <a href={`/items/${item.id}/edit?markWatched=true`} class="mark-watched">Mark as Watched</a>
-          </p>
+          <a href={`/items/${item.id}`} class="view-btn">View</a>
+          <a href={`/items/${item.id}/edit?markWatched=true`} class="mark-watched-btn">Mark as Watched</a>
+          <form method="post" action={`${apiBaseUrl}/items/${item.id}/delete`} class="delete-form">
+            <button type="submit" class="delete-btn">Remove</button>
+          </form>
         </article>
       ))}
     </section>
@@ -86,9 +88,10 @@ const watched = allItems.filter((item) => item.watchStatus === "watched");
           {item.releaseDate && <p>{item.releaseDate.slice(0, 4)}</p>}
           <p>Rating: {item.rating === null ? "Not rated" : `${item.rating} / 5`}</p>
           {item.description && <p>{item.description}</p>}
-          <p>
-            <a href={`/items/${item.id}`}>View</a> &middot; <a href={`/items/${item.id}/edit`}>Edit</a>
-          </p>
+          <a href={`/items/${item.id}`} class="view-btn">View</a>
+          <form method="post" action={`${apiBaseUrl}/items/${item.id}/delete`} class="delete-form">
+            <button type="submit" class="delete-btn">Remove</button>
+          </form>
         </article>
       ))}
     </section>
@@ -96,3 +99,59 @@ const watched = allItems.filter((item) => item.watchStatus === "watched");
     </>
   )}
 </BaseLayout>
+
+<style>
+  .delete-form {
+    margin-top: 0.4rem;
+  }
+  .delete-btn {
+    background: #5a1a1a;
+    color: #fff;
+    border: 1px solid #7a2a2a;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+  }
+  .delete-btn:hover {
+    background: #7a2222;
+  }
+  .mark-watched-btn {
+    display: inline-block;
+    margin-top: 0.4rem;
+    background: #1a3a5a;
+    color: #fff;
+    border: 1px solid #2a5a8a;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font: inherit;
+  }
+  .mark-watched-btn:hover {
+    background: #235080;
+  }
+  .view-btn {
+    display: inline-block;
+    margin-top: 0.4rem;
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font: inherit;
+  }
+  .view-btn:hover {
+    background: #3a3a3a;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>(".delete-form").forEach((form) => {
+    form.addEventListener("submit", (e) => {
+      if (!confirm("Remove this movie from your list?")) {
+        e.preventDefault();
+      }
+    });
+  });
+</script>

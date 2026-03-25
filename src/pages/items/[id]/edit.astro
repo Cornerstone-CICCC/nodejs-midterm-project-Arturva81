@@ -50,8 +50,11 @@ const item: MovieItem | null = itemResponse?.ok ? ((await itemResponse.json()) a
 
   {!!item && (
     <>
-      <h1>Edit: {item.title}</h1>
+      <h1>{markWatched ? `Mark as watched: ${item.title}` : `Edit: ${item.title}`}</h1>
 
+      {markWatched && <p>Add your review and rating, then save the movie as watched.</p>}
+
+      {!markWatched && (
       <div class="live-search">
         <label for="movieSearch">Find a different movie</label>
         <div class="search-input-wrap">
@@ -64,32 +67,41 @@ const item: MovieItem | null = itemResponse?.ok ? ((await itemResponse.json()) a
           <ul id="suggestions" role="listbox" hidden></ul>
         </div>
       </div>
+      )}
 
-      <form method="post" action={`${apiBaseUrl}/items/${id}`}>
+      <form method="post" action={`${apiBaseUrl}/items/${id}`} class="movie-form">
         <input type="hidden" name="tmdbId" id="tmdbId" value={item.tmdbId ?? ""} />
         <input type="hidden" name="posterPath" id="posterPath" value={item.posterPath ?? ""} />
         <input type="hidden" name="releaseDate" id="releaseDate" value={item.releaseDate ?? ""} />
 
-        <label>
+        {markWatched ? (
+          <input type="hidden" name="title" id="title" value={item.title} />
+        ) : (
+        <label class="field-block">
           Movie title
           <input type="text" name="title" id="title" value={item.title} required />
         </label>
-        <label>
+        )}
+        <label class="field-block">
           Review notes
           <textarea name="description" id="description" rows="6">{item.description}</textarea>
         </label>
-        <label>
+        {markWatched ? (
+          <input type="hidden" name="watchStatus" value="watched" />
+        ) : (
+        <label class="field-block">
           Status
           <select name="watchStatus" required>
             <option value="watchlist" selected={markWatched ? false : item.watchStatus === "watchlist"}>Watchlist</option>
             <option value="watched" selected={markWatched ? true : item.watchStatus === "watched"}>Watched</option>
           </select>
         </label>
-        <label>
-          Rating (0 to 5, step 0.5)
+        )}
+        <label class="field-block rating-field">
+          <span>Rating</span>
           <input type="number" name="rating" min="0" max="5" step="0.5" value={item.rating ?? ""} />
         </label>
-        <button type="submit">Save movie</button>
+        <button type="submit" class="submit-btn">{markWatched ? "Save review" : "Save movie"}</button>
       </form>
     </>
   )}
@@ -98,6 +110,39 @@ const item: MovieItem | null = itemResponse?.ok ? ((await itemResponse.json()) a
 </BaseLayout>
 
 <style>
+  .movie-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    max-width: 520px;
+  }
+  .field-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .field-block textarea,
+  .field-block input,
+  .field-block select {
+    width: 100%;
+    max-width: 100%;
+    background: #2b2b2b;
+    color: #fff;
+    border: 1px solid #414141;
+    padding: 0.5rem;
+    border-radius: 4px;
+  }
+  .field-block textarea {
+    min-height: 170px;
+    resize: vertical;
+  }
+  .rating-field {
+    max-width: 180px;
+  }
+  .submit-btn {
+    align-self: flex-start;
+    margin-top: 0.2rem;
+  }
   .live-search {
     margin-bottom: 1.5rem;
   }
